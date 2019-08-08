@@ -91,7 +91,9 @@ def main():
     print("Operation system memory:\t" + osMemory + "MB")
     print("MySQL used memory size: \t" + confFileMemory + "MB")
     print("MySQL used memory percent:\t" + usedPercent + "%")
-    if float(usedPercent) < 90:
+    if float(usedPercent) < 75:
+        print("NOT GOOD: Need to tuneup configuration file for the server.")
+    elif float(usedPercent) < 90:
         print("GOOD: Memory configuration is good for dedicated server.")
     else:
         print("BAD: Please make sure to check configuration file. Less than 90% is good.")
