@@ -103,15 +103,15 @@ def output_my_cnf(_metaconf):
 
 
 def mycnf_innodb_log_file_size_MB(innodb_buffer_pool_size_GB):
-    if int(innodb_buffer_pool_size_GB) > 64:
+    if int(innodb_buffer_pool_size_GB) > 60:
         return '2G'
-    if int(innodb_buffer_pool_size_GB) > 24:
+    if int(innodb_buffer_pool_size_GB) > 22:
         return '1G'
-    if int(innodb_buffer_pool_size_GB) > 8:
+    if float(innodb_buffer_pool_size_GB) > 7.2:
         return '512M'
-    if int(innodb_buffer_pool_size_GB) > 4:
+    if float(innodb_buffer_pool_size_GB) > 3.6:
         return '256M'
-    if int(innodb_buffer_pool_size_GB) > 2:
+    if float(innodb_buffer_pool_size_GB) > 1.6:
         return '128M'
 
     return '64M'
