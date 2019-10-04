@@ -106,6 +106,7 @@ def output_my_cnf(_metaconf):
     innodb_log_files_in_group      = 2
     innodb_log_file_size           = {innodb_log_file_size}
     innodb_log_buffer_size         = {innodb_log_buffer_size}
+    innodb_log_group_home_dir      = {mysql_log_dir}
     innodb_flush_log_at_trx_commit = 1
     innodb_file_per_table          = 1
     innodb_buffer_pool_size        = {innodb_buffer_pool_size}
