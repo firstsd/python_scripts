@@ -5,8 +5,8 @@
 # description     : script to generate MySQL configuration file which has ensured best practice
 # authors         : AndrianBdn, Sodjamts
 # create date     : Aug 06, 2019
-# last updated:   : Aug 06, 2019
-# version         : 1.1
+# last updated:   : Sep 02, 2019
+# version         : 1.2
 # usage           : python mycnf_generator.py mysql_ram_gb=2
 # requirement     : python2
 # ===============================================================================
@@ -17,10 +17,15 @@ import random
 from textwrap import dedent
 
 defaults = {
+    'tmp_dir': "/var/tmp",
     'mysql_dir': "/var/lib/mysql",
+    'mysql_log_dir': "/var/lib/mysql-log",
     'log_error': "/var/log/mysql/mysql-error.log",
     'slow_query_log_file': "/var/log/mysql/mysql-slow.log",
     'pid_file': "/var/run/mysqld/mysqld.pid",
+
+    'character_set': "utf8mb4",
+    'collation_server': "utf8mb4_general_ci",
 
     'mysql_ram_gb': 1,
 
@@ -37,7 +42,7 @@ defaults = {
 def output_my_cnf(_metaconf):
     print(dedent("""
     [mysql]
-    
+
     # CLIENT #
     port                           = 3306
     socket                         = {mysql_dir}/mysql.sock
@@ -46,75 +51,132 @@ def output_my_cnf(_metaconf):
     
     # GENERAL #
     user                           = mysql
-    default-storage-engine         = InnoDB
+    default_storage_engine         = InnoDB
     socket                         = {mysql_dir}/mysql.sock
-    pid-file                       = {pid_file}
+    pid_file                       = {pid_file}
+    character_set_server	       = {character_set}
+    collation_server	           = {collation_server}
+    #tmpdir	  = {tmp_dir}
     
     # MyISAM #
-    key-buffer-size                = 32M
-    myisam-recover                 = FORCE,BACKUP
+    key_buffer_size                = 32M
+    myisam_recover_options         = FORCE,BACKUP
     
     # SAFETY #
-    max-allowed-packet             = 16M
-    max-connect-errors             = 1000000
-    skip-name-resolve
-    sysdate-is-now                 = 1
+    max_allowed_packet             = 128M
+    max_connect_errors             = 1000000
+    skip_name_resolve
+    skip_external_locking
+    #transaction_isolation          = READ-COMMITTED
     
     # DATA STORAGE #
     datadir                        = {mysql_dir}
     
-    # SERVER ID # 
-    server-id                      = {server_id}
-
     # BINARY LOGGING #
-    log-bin                        = {mysql_dir}/mysql-bin
-    expire-logs-days               = 7
-    sync-binlog                    = 1
+    log_bin                        = {mysql_log_dir}/mysql-bin
+    relay_log                      = {mysql_log_dir}/mysql-relay-bin
+    binlog_format                  = ROW
+    max_binlog_size                = 1024M
+    expire_logs_days               = 7
+    sync_binlog                    = 1
+    #log_slave_updates              = 1
+    
+    # SERVER ID # 
+    server_id                      = {server_id}
+    
+    # REPLICATION #
+    master_info_repository         = TABLE
+    relay_log_info_repository      = TABLE
+    #gtid_mode                      = on
+    #enforce_gtid_consistency
     
     # CACHES AND LIMITS #
-    tmp-table-size                 = 32M
-    max-heap-table-size            = 32M
-    query-cache-type               = {query_cache_type}
-    query-cache-size               = {query_cache_size}
-    max-connections                = {max_connections}
-    thread-cache-size              = 50
-    open-files-limit               = 65535
-    table-definition-cache         = 1024
-    table-open-cache               = 2048
+    tmp_table_size                 = {tmp_table_size}
+    max_heap_table_size            = {tmp_table_size}
+    query_cache_type               = {query_cache_type}
+    query_cache_size               = {query_cache_size}
+    max_connections                = {max_connections}
+    thread_cache_size              = 100
+    open_files_limit               = 65535
+    table_definition_cache         = 1024
+    table_open_cache               = 2048
     
     # INNODB #
-    innodb-flush-method            = O_DIRECT
-    innodb-log-files-in-group      = 2
-    innodb-log-file-size           = {innodb_log_file_size}
-    innodb-flush-log-at-trx-commit = 1
-    innodb-file-per-table          = 1
-    innodb-buffer-pool-size        = {innodb_buffer_pool_size}
+    innodb_flush_method            = O_DIRECT
+    innodb_log_files_in_group      = 2
+    innodb_log_file_size           = {innodb_log_file_size}
+    innodb_log_buffer_size         = {innodb_log_buffer_size}
+    innodb_flush_log_at_trx_commit = 1
+    innodb_file_per_table          = 1
+    innodb_buffer_pool_size        = {innodb_buffer_pool_size}
+    innodb_buffer_pool_instances   = {innodb_buffer_pool_instances}
     
     # LOGGING #
-    log-error                      = {log_error}
-    log-queries-not-using-indexes  = 0
-    slow-query-log                 = 1
-    slow-query-log-file            = {slow_query_log_file}
+    log_error                      = {log_error}
+    log_error_verbosity            = 3
+    log_queries_not_using_indexes  = 0
+    slow_query_log                 = 1
+    slow_query_log_file            = {slow_query_log_file}
     long_query_time                = {long_query_time}
     
+    # SECURITY #
+    local_infile                   = 0
+    old_passwords                  = 0
+    log_raw                        = off
+    
     [mysqldump]
-    max-allowed-packet             = 16M
+    max_allowed_packet             = 128M
+    default_character_set          = utf8
+    socket                         = {mysql_dir}/mysql.sock
     """.format(**mycnf_make(_metaconf))))
 
 
-def mycnf_innodb_log_file_size_MB(innodb_buffer_pool_size_GB):
-    if int(innodb_buffer_pool_size_GB) > 60:
+def mycnf_innodb_log_file_size_mb(mysql_ram_gb):
+    if int(mysql_ram_gb) > 60:
         return '2G'
-    if int(innodb_buffer_pool_size_GB) > 22:
+    if int(mysql_ram_gb) > 15:
         return '1G'
-    if float(innodb_buffer_pool_size_GB) > 7.2:
+    if float(mysql_ram_gb) > 7.2:
         return '512M'
-    if float(innodb_buffer_pool_size_GB) > 3.6:
+    if float(mysql_ram_gb) > 3.6:
         return '256M'
-    if float(innodb_buffer_pool_size_GB) > 1.6:
+    if float(mysql_ram_gb) > 1.6:
         return '128M'
-
     return '64M'
+
+
+def mycnf_innodb_buffer_pool_instance(mysql_ram_gb):
+    if int(mysql_ram_gb) > 60:
+        return 16
+    if int(mysql_ram_gb) > 15:
+        return 12
+    if int(mysql_ram_gb) > 7.2:
+        return 8
+    if int(mysql_ram_gb) > 3.6:
+        return 4
+    if int(mysql_ram_gb) > 1.6:
+        return 2
+    return 1
+
+
+def mycnf_innodb_log_buffer_size_mb(mysql_ram_gb):
+    if int(mysql_ram_gb) > 60:
+        return '512M'
+    if int(mysql_ram_gb) > 30:
+        return '256M'
+    if int(mysql_ram_gb) > 15:
+        return '128M'
+    if float(mysql_ram_gb) > 7.2:
+        return '64M'
+    return '32M'
+
+
+def mycnf_tmp_table_size_mb(mysql_ram_gb):
+    if int(mysql_ram_gb) > 120:
+        return '128M'
+    if float(mysql_ram_gb) > 30:
+        return '64M'
+    return '32M'
 
 
 def output_memory_gb(gb):
@@ -126,7 +188,10 @@ def output_memory_gb(gb):
 
 def mycnf_make(m):
     m['innodb_buffer_pool_size'] = output_memory_gb(float(m['mysql_ram_gb']) * 0.7)
-    m['innodb_log_file_size'] = mycnf_innodb_log_file_size_MB(m['mysql_ram_gb'])
+    m['innodb_log_file_size'] = mycnf_innodb_log_file_size_mb(m['mysql_ram_gb'])
+    m['innodb_buffer_pool_instances'] = mycnf_innodb_buffer_pool_instance(m['mysql_ram_gb'])
+    m['innodb_log_buffer_size'] = mycnf_innodb_log_buffer_size_mb(m['mysql_ram_gb'])
+    m['tmp_table_size'] = mycnf_tmp_table_size_mb(m['mysql_ram_gb'])
     return m
 
 
