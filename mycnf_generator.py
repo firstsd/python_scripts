@@ -54,7 +54,7 @@ def output_my_cnf(_metaconf):
     default_storage_engine         = InnoDB
     socket                         = {mysql_dir}/mysql.sock
     pid_file                       = {pid_file}
-    character_set_server	   = {character_set}
+    character_set_server	       = {character_set}
     collation_server	           = {collation_server}
     #tmpdir	  = {tmp_dir}
     
